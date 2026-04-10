@@ -58,10 +58,12 @@ This project implements a real-time digit recognition system (0-9) on FPGA using
 │   └── full_cache_*/             # FC layer caches (256/512/1024)
 ├── vivado/                       # Vivado project file
 │   └── newone.xpr
-└── weights/                      # CNN pre-trained weights
-    ├── conv*_weight_*.txt        # Convolution layer weights
-    ├── fc_weight.txt / fc_bias.txt # FC layer weights & biases
-    └── 0_2*.txt                  # Digit display images (0-9)
+├── weights/                      # CNN pre-trained weights
+│   ├── conv*_weight_*.txt        # Convolution layer weights
+│   ├── fc_weight.txt / fc_bias.txt # FC layer weights & biases
+│   └── 0_2*.txt                  # Digit display images (0-9)
+└── verification/                 # Software verification
+    └── cnn_model.py              # Python CNN model for validating FPGA outputs
 ```
 
 ## System Architecture
@@ -114,9 +116,9 @@ The system consists of the following processing pipeline:
 
 ### 1. Project Setup
 
-1. Open Vivado and create a new project or open the existing project
-2. Add all SystemVerilog source files from `imports/ronghe/` and `new/` directories
-3. Add all IP core files from the `ip/` directory
+1. Open Vivado and create a new project or open the existing project (`vivado/newone.xpr`)
+2. Add all SystemVerilog source files from the `src/` directory and its subdirectories
+3. Add all IP core `.xci` files from the `ip/` directory
 
 ### 2. IP Core Configuration
 
@@ -141,15 +143,17 @@ The following IP cores need to be configured:
 
 ### 3. Weight Files Configuration
 
-The system requires weight files for the fully connected layers. Update the file paths in the following modules:
+The CNN weight files are located in the `weights/` directory. Update the `$readmemh` paths in the following source files to match your local setup:
 
-- `new/full_layer.sv`: Update paths for `fc_weight.txt` and `fc_bias.txt`
-- `new/output_layer.sv`: Update paths for digit image files (`0_20.txt` through `0_29.txt`)
+- `src/cnn/conv1.sv`: Update paths for `conv1_weight_*.txt` and `conv1_bias.txt`
+- `src/cnn/conv2.sv`: Update paths for `conv2_weight_*.txt` and `conv2_bias.txt`
+- `src/fc/full_layer.sv`: Update paths for `fc_weight.txt` and `fc_bias.txt`
+- `src/fc/output_layer.sv`: Update paths for digit image files (`0_20.txt` through `0_29.txt`)
 
 Example:
 ```systemverilog
-$readmemh("D:/weights/fc_weight.txt", weight);
-$readmemh("D:/weights/fc_bias.txt", bias);
+$readmemh("weights/fc_weight.txt", weight);
+$readmemh("weights/fc_bias.txt", bias);
 ```
 
 **Note**: Ensure all weight files are accessible at the specified paths during synthesis and implementation.
@@ -213,7 +217,7 @@ set_property IOSTANDARD TMDS_33 [get_ports hdmi_tmds_clk_p]
 
 4. **Monitor the output**:
    - The system displays the recognized digit (0-9) on the HDMI monitor
-   - Layer selection can be modified in `Final_project_top.sv` (line 514) to view intermediate processing results:
+   - Layer selection can be modified in `src/Final_project_top.sv` to view intermediate processing results:
      - `3'b001`: C1 layer output
      - `3'b010`: P1 layer output
      - `3'b011`: C2 layer output
@@ -222,7 +226,7 @@ set_property IOSTANDARD TMDS_33 [get_ports hdmi_tmds_clk_p]
 
 ### 3. Layer Selection
 
-To view intermediate processing results, modify the `layer_select` signal in `Final_project_top.sv`:
+To view intermediate processing results, modify the `layer_select` signal in `src/Final_project_top.sv`:
 
 ```systemverilog
 assign layer_select = 3'b101; // Change this value
@@ -299,6 +303,60 @@ Proper clock domain crossing (CDC) is implemented using synchronizers.
 - **Processing Latency**: Pipeline-based, real-time processing
 - **Frame Rate**: Limited by camera capture rate and processing pipeline
 - **Recognition Accuracy**: Depends on trained CNN weights
+
+## Weight Files
+
+The CNN weight files in `weights/` are derived from a PyTorch-trained MNIST model.
+
+**Source**: [CNN-Implementation-in-Verilog](https://github.com/boaaaang/CNN-Implementation-in-Verilog) (`pyTorch/mnist_cnn/`)
+
+### File List
+
+| Category | Files | Description |
+|----------|-------|-------------|
+| Conv1 Weights | `conv1_weight_{1,2,3}.txt`, `conv1_bias.txt` | 5×5 convolution kernels (3 channels) |
+| Conv2 Weights | `conv2_weight_{11..33}.txt`, `conv2_bias.txt` | 5×5 convolution kernels (3×3 channels) |
+| FC Weights | `fc_weight.txt`, `fc_bias.txt` | Fully connected layer (48×10) |
+| Digit Images | `0_20.txt` ~ `0_29.txt` | 28×28 digit display bitmaps (0-9) |
+
+### File Format
+
+- Hexadecimal text, one value per line
+- 8-bit signed two's complement (`-128` to `+127`)
+- Loaded via `$readmemh()` in SystemVerilog
+
+### Updating Weight Paths
+
+After cloning, update the `$readmemh` paths in these source files:
+
+```systemverilog
+// src/cnn/conv1.sv
+$readmemh("weights/conv1_weight_1.txt", weight_1);
+
+// src/cnn/conv2.sv
+$readmemh("weights/conv2_weight_11.txt", weight_1);
+
+// src/fc/full_layer.sv
+$readmemh("weights/fc_weight.txt", weight);
+
+// src/fc/output_layer.sv
+$readmemh("weights/0_20.txt", T0);
+```
+
+## Software Verification
+
+A Python implementation of the same CNN pipeline is provided in `verification/cnn_model.py` for validating FPGA hardware outputs.
+
+### Usage
+
+```bash
+cd verification
+python cnn_model.py
+```
+
+The script implements the full pipeline (Conv1 → Pool1 → Conv2 → Pool2 → FC) in software, reads the same weight files from `weights/`, and outputs intermediate results for comparison with FPGA hardware.
+
+**Dependencies**: `numpy`, `matplotlib`, `Pillow`
 
 ## Notes
 
