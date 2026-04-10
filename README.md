@@ -11,32 +11,57 @@ This project implements a real-time digit recognition system (0-9) on FPGA using
 ## Project Structure
 
 ```
-sources_1/
-├── imports/ronghe/          # Core CNN and camera modules
-│   ├── Final_project_top.sv # Top-level module
-│   ├── ov7670_capture.sv    # Camera capture module
-│   ├── ov7670_configuration.sv # Camera I2C configuration
-│   ├── cnn3.sv              # 3x3 convolution unit
-│   ├── cnn_gus.sv           # CNN processing core
-│   ├── cnn_read.sv          # CNN read controller
-│   ├── pool3.sv             # 3x3 pooling unit
-│   └── pool_read_p1.sv      # Pooling read controller
-├── new/                     # Additional processing layers
-│   ├── conv1_layer1.sv      # First fully connected layer
-│   ├── conv2_layer2.sv      # Second fully connected layer
-│   ├── full_layer.sv        # Output layer (0-9 classification)
-│   ├── pre_layer.sv         # Preprocessing layer
-│   ├── rgb2gray.sv          # RGB to grayscale conversion
-│   ├── display_controller.sv # VGA/HDMI display controller
-│   └── output_layer.sv      # Final output display layer
-└── ip/                      # Xilinx IP cores
-    ├── clk_wiz_0/           # Clock wizard (25MHz, 125MHz, 24MHz)
-    ├── pixel_memory/        # Frame buffer BRAM
-    ├── img_cache/           # Image cache for C1 layer
-    ├── mid_cache/           # Intermediate cache for P1/C2
-    ├── end_cache/           # Cache for P2 layer
-    ├── pre_1024/            # Preprocessing layer cache
-    └── hdmi_tx_0/           # VGA to HDMI converter
+├── src/                          # SystemVerilog source files
+│   ├── Final_project_top.sv      # Top-level module
+│   ├── camera/                   # OV7670 camera interface
+│   │   ├── ov7670_capture.sv     # Camera pixel capture FSM
+│   │   ├── ov7670_configuration.sv # Camera I2C configuration
+│   │   ├── ov7670_fsm.sv         # Camera register setup FSM
+│   │   └── i2c_master.sv         # I2C master controller
+│   ├── cnn/                      # CNN convolution layers
+│   │   ├── cnn3.sv               # 3x3 convolution unit (RGB)
+│   │   ├── cnn_gus.sv            # Gaussian convolution core
+│   │   ├── cnn_read.sv           # C1 layer read controller
+│   │   ├── cnn_read_c2.sv        # C2 layer read controller
+│   │   ├── conv1.sv              # Convolution layer 1 kernel
+│   │   ├── conv1_layer1.sv       # FC layer 1 (748 → intermediate)
+│   │   ├── conv2.sv              # Convolution layer 2 kernel
+│   │   └── conv2_layer2.sv       # FC layer 2 (intermediate → high-level)
+│   ├── pooling/                  # Pooling layers
+│   │   ├── pool3.sv              # 2x2 max pooling unit (RGB)
+│   │   ├── pool_core.sv          # Pooling computation core
+│   │   ├── pool_core0.sv         # Pooling computation core (alt)
+│   │   ├── pool1_layer.sv        # Pooling layer 1 wrapper
+│   │   ├── pool_read_p1.sv       # P1 layer read controller
+│   │   └── pool_read_p2.sv       # P2 layer read controller
+│   ├── fc/                       # Fully connected & output layers
+│   │   ├── pre_layer.sv          # Flatten 2D → 1D (748 features)
+│   │   ├── full_layer.sv         # FC output layer (→ 10 classes)
+│   │   └── output_layer.sv       # Digit display image lookup
+│   ├── display/                  # VGA/HDMI display
+│   │   ├── display_controller.sv # VGA timing & pixel output
+│   │   ├── vga_sync_gen.sv       # VGA sync signal generator
+│   │   └── rgb2gray.sv           # RGB to grayscale conversion
+│   └── utils/                    # Utility modules
+│       ├── sync_debounce.sv      # Button debounce & sync
+│       └── read_ramp2.sv         # Memory read helper
+├── constraints/                  # FPGA pin constraints
+│   └── Urbana.xdc               # Pin assignments for Urbana board
+├── ip/                           # Xilinx IP core configurations
+│   ├── clk_wiz_0/               # Clock wizard (25/125/24 MHz)
+│   ├── pixel_memory/             # Frame buffer BRAM
+│   ├── img_cache/                # C1 layer result cache
+│   ├── mid_cache/                # P1/C2 intermediate cache
+│   ├── end_cache/                # P2 layer result cache
+│   ├── pre_1024/                 # Pre-processing layer cache
+│   ├── hdmi_tx_0/                # VGA to HDMI converter
+│   └── full_cache_*/             # FC layer caches (256/512/1024)
+├── vivado/                       # Vivado project file
+│   └── newone.xpr
+└── weights/                      # CNN pre-trained weights
+    ├── conv*_weight_*.txt        # Convolution layer weights
+    ├── fc_weight.txt / fc_bias.txt # FC layer weights & biases
+    └── 0_2*.txt                  # Digit display images (0-9)
 ```
 
 ## System Architecture
