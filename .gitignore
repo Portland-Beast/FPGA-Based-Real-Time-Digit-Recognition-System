@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+# Vivado generated/intermediate files
+*.gen/
+*.runs/
+*.cache/
+*.ip_user_files/
+*.hw/
+*.sim/
+
+# Vivado logs and journals
+vivado*.log
+vivado*.jou
+vivado*.str
+vivado*.backup.*
+
+# Vivado temp files
+*.Xil/
+.Xil/
+webtalk*/
+usage_statistics_webtalk.*
+
+# Synthesis checkpoints and bitstreams (large, can be regenerated)
+*.dcp
+*.bit
+*.bin
+*.ltx
