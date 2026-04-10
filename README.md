@@ -1,5 +1,9 @@
 # FPGA-Based Real-Time Digit Recognition System
 
+> **UIUC ECE 385 — Digital Systems Laboratory, Fall 2025 Final Project**
+
+![System Architecture](final_demo.png)
+
 ## Overview
 
 This project implements a real-time digit recognition system (0-9) on FPGA using an OV7670 camera module and a Convolutional Neural Network (CNN). The system captures images from the camera, processes them through multiple CNN layers, and displays the recognition results via HDMI output.
